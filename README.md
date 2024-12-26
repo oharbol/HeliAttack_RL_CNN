@@ -1,11 +1,11 @@
 # HeliAttack_RL_CNN
 
-Man-Hours worked on project (After 14DEC2023): 
-- Coding: 0 hours
+Man-Hours worked on project (Current as of 26DEC2024): 
+- Coding: 2 hours
 - Manual Backtesting: 0 hours
 - Research: 1 hours
 
-Total Man-Hours: 1 hours
+Total Man-Hours: 3 hours
 
 Note: Total Man-Hours does not reflect model training time and automated forward testing.
 
@@ -19,8 +19,8 @@ TODO
 TODO
 
 ## TODO
-- [ ] Conduct tests on aquiring screenshots in designated area
-- [ ] Create feature extraction of image for playerr health
+- [x] Conduct tests on aquiring screenshots in designated area
+- [x] Create feature extraction of image for playerr health
 - [ ] Create custom environment in Stable Baselines 3
 - [ ] Create actions options and controls for actions
 - [ ] Create reward function
