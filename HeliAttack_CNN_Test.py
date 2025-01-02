@@ -77,9 +77,9 @@ def get_score(list_pix):
 #Translate Score Letter Pixels to list of white pixels in image
 #Temporary list to hold white pixel locations
 def find_white_pixels(start_x, start_y, x_pix, y_pix, pixels):
-    im = ImageGrab.grab([start_x, start_y, start_x + x_pix, start_y + y_pix])
-    fname = f"Test Images/{x_pix}{y_pix}.png"
-    im.save(fname, 'png')
+    # im = ImageGrab.grab([start_x, start_y, start_x + x_pix, start_y + y_pix])
+    # fname = f"Test Images/{x_pix}{y_pix}.png"
+    # im.save(fname, 'png')
     #Return list
     white_px = []
     #Loop through all pixels
@@ -162,16 +162,21 @@ while health > 0:
     score_square = 9
     score_1_width = 4
     score = 0
-    score_temp = -1
+    score_temp = 0
 
 
     #//////////////////
 
-    while score_temp != 0:
+    while score_temp != -1:
+        #Loop until zero is found, concat letters, to int, multiply by 1000
+        if(score_temp == 0):
+            score = score * 10
+        else:
+            score = (score * 10) + score_temp
+
         #Check first 4 pixels if image is one
         #pixels = grab_screenshot(SCREEN_X + SCORE_X_POS + score_x, SCREEN_Y + SCORE_Y_POS, SCREEN_X + SCORE_X_POS + score_square + score_x, SCREEN_Y + SCORE_Y_POS + score_square, save=True, name="1Check")
         white_px = find_white_pixels(SCORE_X_POS + score_x, SCORE_Y_POS, score_1_width, score_square, pix)
-
 
         #Post process pixels to determine if "1"
         if(len(white_px) == 8):
@@ -188,12 +193,6 @@ while health > 0:
             score_temp = get_score(white_px)
 
             score_x += score_square + 1
-
-        #Loop until zero is found, concat letters, to int, multiply by 1000
-        if(score_temp == 0):
-            score = score * 1000
-        else:
-            score = (score * 10) + score_temp
 
     #Multiply temp score by 10, add found value
     #Print score for now
