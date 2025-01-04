@@ -10,6 +10,10 @@ health = 10
 health_y_list = [6,11,21,30,40,50,60,70,79,89]
 last_health = health
 
+move_temp = True
+
+llama = 55
+
 last_score = 0
 score_x = 0
 score_last = -1
@@ -70,6 +74,9 @@ def get_score(list_pix):
         case 10:
             return 0
         case 11:
+            for x in list_pix:
+                if(x not in pixel_4):
+                    return 0
             return 4
         case _:
             return -1
@@ -98,7 +105,7 @@ def find_white_pixels(start_x, start_y, x_pix, y_pix, pixels):
 # pixel_1 = [[2,1], [2,2], [2,3], [2,4], [2,5], [2,6], [2,7], [2,8]]
 # pixel_2 = [[7,2], [7,3], [1,7], [1,8]]
 # pixel_3 = [[7,2], [7,3], [7,6]]
-# pixel_4 = [[4,1], [5,1], [6,1], [6,2], [6,3], [6,4], [1,5], [6,5], [6,6], [6,7], [6,8]]
+pixel_4 = [[4,1], [5,1], [6,1], [6,2], [6,3], [6,4], [1,5], [6,5], [6,6], [6,7], [6,8]]
 pixel_5 = [[1,1], [1,2], [1,3], [1,4], [7,6]]
 pixel_6 = [[1,2], [1,3], [1,4], [1,5], [1,6], [7,6]]
 # pixel_7 = [[7,1], [4,5], [5,5], [3,7], [3,8]]
@@ -115,6 +122,17 @@ pixel_6 = [[1,2], [1,3], [1,4], [1,5], [1,6], [7,6]]
 #7 : #9 g
 
 print("Health: ", health)
+
+# Click "Start Button"
+pyautogui.moveTo(662, 697)
+pyautogui.click()
+
+# Move Mouse to Starting Position
+pyautogui.moveTo(480, 328)
+
+# Wait for paratrooper to land
+time.sleep(3)
+
 
 while health > 0:
     #Get cropped image of game
@@ -196,7 +214,7 @@ while health > 0:
 
     #Multiply temp score by 10, add found value
     #Print score for now
-    if(score != score_last):
+    if(score != score_last and score >= score_last and score <= score_last + 30000):
         print("Score: ", score)
         score_last = score
 
@@ -205,23 +223,68 @@ while health > 0:
     score_x = 0
 
 
-#Movement Notes
-#Main Menu: X 662 Y 697
-#Starting Mouse: X 480 Y 328
+    ## MOVEMENT CODE TEST ##
 
-#Movement Testing code
-# pyautogui.moveTo(662, 697)
-# pyautogui.click()
-# pyautogui.moveTo(480, 328)
+    #Movement Notes
+    #Main Menu: X 662 Y 697
+    #Starting Mouse: X 480 Y 328
 
-# Hold down the 'shift' key
-#pyautogui.keyDown('shift')
+    # Move right
+    # pyautogui.keyDown('right')
+    # if(move_temp):
+    #     pyautogui.keyUp('right')
+    #     move_temp = False
+    # else:
+    #     move_temp = True
+
+    # Duck 
+    # pyautogui.keyDown('down')
+    # if(move_temp):
+    #     pyautogui.keyUp('down')
+    #     move_temp = False
+    # else:
+    #     move_temp = True
+
+
+    # Move mouse
+    # Left limit 150
+    # Right limit 810
+    # mouse_x, mouse_y = pyautogui.position()
+    # if(mouse_x > 761 or mouse_x < 198):
+    #     llama *= -1
+
+    # pyautogui.move(llama, 0)
+
+
+    # Constantly shoot
+    # pyautogui.mouseDown()
+
+    if(move_temp):
+        pyautogui.mouseUp()
+        move_temp = False
+    else:
+        pyautogui.mouseDown()
+        move_temp = True
+
+    # Crude jumping inputs
+    # pyautogui.keyDown('up')
+    # pyautogui.keyUp('up')
 
 
 #End of Game
 print("You died! You suck!")
 
-
+# Remove mousedown input
+pyautogui.mouseUp()
+pyautogui.keyUp('right')
+pyautogui.keyUp('left')
+pyautogui.keyUp('up')
+pyautogui.keyUp('down')
+# Freeze inputs for 7 seconds after dying
+time.sleep(7)
+# Click to open main menu
+pyautogui.moveTo(400, 620)
+pyautogui.click()
 
 # HEALTH CODE #
 
