@@ -6,12 +6,12 @@ import os
 from HeliAttack2_ENV import HeliAttackEnv
     
 # Global consts for training
-SAVE_MODEL = True
-TIMESTEPS = 100000
+SAVE_MODEL = False
+TIMESTEPS = 300000
 
 # Naming Convention
 # "Model_Timeframe_data source_SHAPE_Reward Function_added observations_#itteration"
-model_name = "PPO_HeliAttack2_8"
+model_name = "PPO_HeliAttack2_11"
 models_dir = f"models/{model_name}"
 logdir = "logs"
 
@@ -29,7 +29,9 @@ env = HeliAttackEnv()
 #env.reset()
 
 # Models
-model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=logdir)
+#model = DQN("MlpPolicy", env, verbose=0, buffer_size=10000, tensorboard_log=logdir) # exploration_fraction=0.95 batch_size=256
+model = PPO("MlpPolicy", env, verbose=0, n_steps=4096, tensorboard_log=logdir)
+# RecurrentPPO is too slow!!
 # model = RecurrentPPO("MlpLstmPolicy", env, verbose=1, tensorboard_log=logdir)
 
 # Timesteps

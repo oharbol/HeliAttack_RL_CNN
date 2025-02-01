@@ -10,8 +10,6 @@ import pynput
 from pynput.mouse import Button
 from pynput.keyboard import Key
 
-# Optimizations
-#TODO Test different GUI library like pywinauto or pynput
 
 # Timing improvements
 # Each step (pyautogui):
@@ -195,19 +193,19 @@ class HeliAttackEnv(gym.Env):
 
         # Reduce reward if hit
         if(last_health > self.health):
-            reward -= 10
+            reward -= 100
 
         # End game if dead
         if(self.health <= 0):
             done = True
-            reward -= 100
+            reward += -300 + (self.steps / 15) #600 seconds goal decreased by time survived
 
         # Reward for living
         else:
             reward -= 0.05
         
         # DEBUGGING CODE
-        # self.steps += 1
+        self.steps += 1
         # if(self.steps % 1000 == 0):
         #     print("Step: ", self.steps)
 
@@ -223,6 +221,7 @@ class HeliAttackEnv(gym.Env):
             self.last_health = 0
             self.health = 10
             self.position = 6
+            self.steps = 1
 
             self.score_x = 0
 
