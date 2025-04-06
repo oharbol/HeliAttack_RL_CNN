@@ -72,6 +72,11 @@ class HeliAttackEnv(gym.Env):
         # Middle at 6
         self.position = 6
 
+        # Images to save
+        self.image_1 = []
+        self.image_2 = []
+        self.image_3 = []
+
         # Pixel Variables
         self.health_y_list = [6,11,21,30,40,50,60,70,79,89]
         self.pixel_4 = [[4,1], [5,1], [6,1], [6,2], [6,3], [6,4], [1,5], [6,5], [6,6], [6,7], [6,8]]
@@ -85,7 +90,7 @@ class HeliAttackEnv(gym.Env):
         self.action_space = spaces.Discrete(7)
         # Example for using image as input (channel-first; channel-last also works):
         self.observation_space = spaces.Box(low=0, high=255,
-                                            shape=(HEIGHT, WIDTH, 3), dtype=np.uint8)
+                                            shape=(HEIGHT * 3, WIDTH), dtype=np.uint8) # shape=(HEIGHT, WIDTH, 3)
         
     # ACTIONS
     # 0 - Left
@@ -183,7 +188,7 @@ class HeliAttackEnv(gym.Env):
 
         # Larger reward for downing helicopter
         if(self.score // 30000 > last_score // 30000):
-            reward += 100
+            reward += 300
             done = True
 
 
@@ -198,18 +203,27 @@ class HeliAttackEnv(gym.Env):
         # End game if dead
         if(self.health <= 0):
             done = True
-            reward += -300 + (self.steps / 15) #600 seconds goal decreased by time survived
+            reward -= 500
+            # reward += -300 + (self.steps / 15) #600 seconds goal decreased by time survived
 
         # Reward for living
         else:
-            reward -= 0.05
+            reward -= 0.5
         
         # DEBUGGING CODE
         self.steps += 1
         # if(self.steps % 1000 == 0):
         #     print("Step: ", self.steps)
 
-        return np.asarray(im), reward, done, self.truncated, info
+        # Save new images
+        self.image_3 = self.image_2
+        self.image_2 = self.image_1
+        self.image_1 = im.convert("L")
+        
+        #np.concatenate((self.image_1, self.image_2, self.image_3))
+        #np.asarray(self.image_1)
+        return np.concatenate((self.image_1, self.image_2, self.image_3)) , reward, done, self.truncated, info
+
 
     def reset(self, seed=None, options=None):
         info = {}
@@ -272,7 +286,15 @@ class HeliAttackEnv(gym.Env):
         #pix = self.grab_screenshot(SCREEN_X, SCREEN_Y, SCREEN_X + WIDTH, SCREEN_Y + HEIGHT)
         im = ImageGrab.grab([SCREEN_X, SCREEN_Y, SCREEN_X + WIDTH, SCREEN_Y + HEIGHT])
 
-        return np.asarray(im), info
+        # Save initial images
+        self.image_1 = im.convert("L")
+        self.image_2 = im.convert("L")
+        self.image_3 = im.convert("L")
+       
+        # np.concatenate((self.image_1, self.image_2, self.image_3))
+        #np.asarray(self.image_1)
+        return np.concatenate((self.image_1, self.image_2, self.image_3)), info
+
 
     # Close File
     def close(self):
