@@ -1,6 +1,8 @@
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+from gymnasium.spaces import Dict, Box, Discrete, Text
+from gymnasium.wrappers import FlattenObservation
 
 # Not used but needed for some stupid reason for pynput to work
 import pyautogui
@@ -9,36 +11,32 @@ import time
 import pynput
 from pynput.mouse import Button
 from pynput.keyboard import Key
-
-
-# Timing improvements
-# Each step (pyautogui):
-# Was 0.65 sec
-# Now 0.26 sec      Improvement = -0.39 sec
-# Each step (pynput):
-# Was 0.65 sec
-# Now 0.025 sec      Improvement = -0.625 sec
-
-# Reset Variables:
-# Was 0.55 sec
-# Now 0.10 sec      Improvement = 0.45 sec
-
-# All other processes take 0.02 seconds
-# Image grab 0.05 seconds
+import string
 
 # Constant variables
-SCREEN_X = 198
-SCREEN_Y = 328
-SCORE_X_POS = 58
-SCORE_Y_POS = 23
-WIDTH = 563
-HEIGHT = 378
-SCORE_HEIGHT = 9
-SCORE_ALT_WIDTH = 4
+SCREEN_X = 254 #198
+SCREEN_Y = 370 #328
+WIDTH = 452
+HEIGHT = 322
+
+# Score Screen Constants
+SCORE_X = 47 + SCREEN_X
+SCORE_Y = 19 + SCREEN_Y
+SCORE_WIDTH = 80
+SCORE_HEIGHT = 8
+
+# Health Screen Constants
+HEALTH_X = 434 + SCREEN_X
+HEALTH_Y = 4 + SCREEN_Y
+HEALTH_WIDTH = 13
+HEALTH_HEIGHT = 72
 
 LEFT_LIMIT = 150
 RIGHT_LIMIT = 810
 MOUSE = 55
+
+WHITE_PIX = (255, 255, 255)
+WHITE_RED_PIX = (255, 254, 254)
 
 # Input handler variables
 mouse = pynput.mouse.Controller()
@@ -77,21 +75,24 @@ class HeliAttackEnv(gym.Env):
         self.image_2 = []
         self.image_3 = []
 
-        # Pixel Variables
-        self.health_y_list = [6,11,21,30,40,50,60,70,79,89]
-        self.pixel_4 = [[4,1], [5,1], [6,1], [6,2], [6,3], [6,4], [1,5], [6,5], [6,6], [6,7], [6,8]]
-        self.pixel_5 = [[1,1], [1,2], [1,3], [1,4], [7,6]]
-        self.pixel_6 = [[1,2], [1,3], [1,4], [1,5], [1,6], [7,6]]
-
 
         # Define action and observation space
         # They must be gym.spaces objects
         # Example when using discrete actions:
         self.action_space = spaces.Discrete(7)
         # Example for using image as input (channel-first; channel-last also works):
-        self.observation_space = spaces.Box(low=0, high=255,
-                                            shape=(HEIGHT * 3, WIDTH), dtype=np.uint8) # shape=(HEIGHT, WIDTH, 3)
+        # self.observation_space = spaces.Box(low=0, high=255,
+        #                                     shape=(HEIGHT * 3, WIDTH), dtype=np.uint8) # shape=(HEIGHT, WIDTH, 3)
         
+        # Multi Policy Observation Space
+        self.observation_space = Dict({
+            "health": Discrete(11),
+            "score": Discrete(2147483), # Text(1),
+            "images": Box(low=0, high=255, shape=(HEIGHT, WIDTH), dtype= np.uint8)
+        })
+
+        
+
     # ACTIONS
     # 0 - Left
     # 1 - Right
@@ -169,15 +170,9 @@ class HeliAttackEnv(gym.Env):
         
         # Do nothing (action == 7)
 
-        # Get overall screen
-        #pix = self.grab_screenshot(SCREEN_X, SCREEN_Y, SCREEN_X + WIDTH, SCREEN_Y + HEIGHT)
-        im = ImageGrab.grab([SCREEN_X, SCREEN_Y, SCREEN_X + WIDTH, SCREEN_Y + HEIGHT])
-        pix = im.load()
-
-
         # Get new game score
         last_score = self.score
-        self.score = self.get_score(pix)
+        self.score = self.get_score()
 
         # Reset score x variable
         self.score_x = 0
@@ -194,7 +189,7 @@ class HeliAttackEnv(gym.Env):
 
         # Check health
         last_health = self.health
-        self.health = self.get_health(self.health, pix)
+        self.health = self.get_health()
 
         # Reduce reward if hit
         if(last_health > self.health):
@@ -211,18 +206,38 @@ class HeliAttackEnv(gym.Env):
             reward -= 0.5
         
         # DEBUGGING CODE
-        self.steps += 1
+        # self.steps += 1
         # if(self.steps % 1000 == 0):
         #     print("Step: ", self.steps)
 
+        # Reward 3
+        # Reward (positive) is a fraction based on the current health
+        # if(reward > 0):
+        #     reward *= round(1 / self.health, 1) 
+
+        # Reward 4
+        # Reward based on difference between last health and time between heli kills
+
+        # Get overall screen
+        #pix = self.grab_screenshot(SCREEN_X, SCREEN_Y, SCREEN_X + WIDTH, SCREEN_Y + HEIGHT)
+        im = ImageGrab.grab([SCREEN_X, SCREEN_Y, SCREEN_X + WIDTH, SCREEN_Y + HEIGHT])
+        
         # Save new images
-        self.image_3 = self.image_2
-        self.image_2 = self.image_1
+        # self.image_3 = self.image_2
+        # self.image_2 = self.image_1
         self.image_1 = im.convert("L")
         
         #np.concatenate((self.image_1, self.image_2, self.image_3))
         #np.asarray(self.image_1)
-        return np.concatenate((self.image_1, self.image_2, self.image_3)) , reward, done, self.truncated, info
+
+        # Multi Policy Observation Space
+        observation = {
+            "health": self.health,
+            "score": self.score // 1000,
+            "images": np.asarray(self.image_1)
+        }
+
+        return observation, reward, done, self.truncated, info
 
 
     def reset(self, seed=None, options=None):
@@ -260,24 +275,19 @@ class HeliAttackEnv(gym.Env):
             time.sleep(7.5)
 
             # Click to open main menu
-            #pyautogui.moveTo(400, 620, duration=0.5)
-            mouse.position = (400, 620)
+            mouse.position = (SCREEN_X + 158, SCREEN_Y + 234) #400, 620
             time.sleep(0.5)
-            #pyautogui.click(clicks=2)
             mouse.press(Button.left)
             mouse.release(Button.left)
 
             # Click "Start Button"
-            #pyautogui.moveTo(662, 697, duration=0.5)
-            mouse.position = (662, 697)
+            mouse.position = (SCREEN_X + 372, SCREEN_Y + 296) #662, 697
             time.sleep(0.5)
-            #pyautogui.click(clicks=2)
             mouse.press(Button.left)
             mouse.release(Button.left)
 
             # Move Mouse to Starting Position
-            #pyautogui.moveTo(480, 328)
-            mouse.position = (480, 315)
+            mouse.position = (SCREEN_X + 226, 315) #480, 315
 
             # Wait for paratrooper to land
             time.sleep(3)
@@ -288,12 +298,20 @@ class HeliAttackEnv(gym.Env):
 
         # Save initial images
         self.image_1 = im.convert("L")
-        self.image_2 = im.convert("L")
-        self.image_3 = im.convert("L")
+        # self.image_2 = im.convert("L")
+        # self.image_3 = im.convert("L")
        
         # np.concatenate((self.image_1, self.image_2, self.image_3))
         #np.asarray(self.image_1)
-        return np.concatenate((self.image_1, self.image_2, self.image_3)), info
+
+        # Multi Policy Observation Space
+        observation = {
+            "health": self.health,
+            "score": self.score // 1000,
+            "images": np.asarray(self.image_1)
+        }
+
+        return observation, info
 
 
     # Close File
@@ -302,114 +320,95 @@ class HeliAttackEnv(gym.Env):
 
 
     # Helper Functions
-    # Takes screen shot of designated area
-    # Automatically does not save screen shot
-    # def grab_screenshot(self, x,y,x2,y2):
-    #     im = ImageGrab.grab([x, y, x2, y2])
-    #     pix = im.load()
-
-    #     return pix, im
     
-    # Function to find changes to health
-    def get_health(self, curr_health, pix):
-        #Get colored pixel of health at last red level
-        color = pix[552, self.health_y_list[10 - curr_health]]
+    def get_health(self):
+        im = ImageGrab.grab([HEALTH_X, HEALTH_Y, HEALTH_X + HEALTH_WIDTH, HEALTH_Y + HEALTH_HEIGHT])
+        pix = im.load()
 
-        #Player was hit
-        #If white/gray pixel is observed reduce heath
-        if(color[0] == color[1]):
-            curr_health -= 1
+        temp = self.health
+        if(temp == 1):
+            y = 67
+        else:
+            y = 2 + (10 - temp) * 8
+        x = 3
 
-        #Check if med pack was picked up
-        if(curr_health == 9):
-            #Get colored pixel at space 10
-            color = pix[552, self.health_y_list[0]]
-            if(color[0] > color[1] and color[1] != color[2]):
-                curr_health += 1
-        elif(curr_health < 9):
-            #Get colored pixel at space above 2 health levels
-            color = pix[552, self.health_y_list[8 - curr_health]]
-            if(color[0] > color[1] and color[1] != color[2]):
-                curr_health += 2
+        #Player hit
+        if(pix[x,y] == WHITE_PIX or pix[x,y] == WHITE_RED_PIX):
+            temp -= 1
+
+        #Medpack picked up
+        elif(temp == 9 and pix[x,y-8] != WHITE_PIX and pix[x,y-8] != WHITE_RED_PIX):
+            temp += 1
+
+        #Health less than 9
+        elif(temp < 9 and pix[x,y-16] != WHITE_PIX and pix[x,y-16] != WHITE_RED_PIX):
+            temp += 2
+
+        return temp
         
-        return curr_health
+        
+    # Method to determine current score
+    def get_score(self):
 
-    #Translate Score Letter Pixels to list of white pixels in image
-    #Temporary list to hold white pixel locations
-    def find_white_pixels(self, start_x, start_y, x_pix, y_pix, pixels):
-        #Return list
-        white_px = []
+        im = ImageGrab.grab([SCORE_X, SCORE_Y, SCORE_X + SCORE_WIDTH, SCORE_Y + SCORE_HEIGHT])
+        pix = im.load()
 
-        #Loop through all pixels
-        for y in range(start_y, start_y + y_pix):
-            for x in range(start_x, start_x + x_pix):
-                #Get pixel color
-                temp = pixels[x,y]
-                #Check for white pixels
-                if(temp[0] == 255 and temp[1] == 255 and temp[2] == 255):
-                    white_px.append([x - (SCORE_X_POS + self.score_x), y - SCORE_Y_POS])
-
-        return white_px
-    
-    #Switch Case to get number from white pixels
-    def get_score_num(self, list_pix):
-        match len(list_pix):
-            case 3:
-                return 3
-            case 4:
-                return 2
-            case 5:
-                for x in list_pix:
-                    if(x not in self.pixel_5):
-                        return 7
-                return 5
-            case 6:
-                for x in list_pix:
-                    if(x not in self.pixel_6):
-                        return 8
-                return 6
-            case 7:
-                return 9
-            # case 8:
-            #     return 1
-            case 10:
-                return 0
-            case 11:
-                for x in list_pix:
-                    if(x not in self.pixel_4):
-                        return 0
-                return 4
-            case _:
-                return -1
-    
-    # Function to get current score
-    def get_score(self, pix):
+        # Establish variables
+        x = 0
         curr_score = 0
-        score_temp = 0
+        temp = 0
 
-        # Loop until 
-        while score_temp != -1:
-            # multiply score by 10 and add temp score
-            if(score_temp == 0):
-                curr_score = curr_score * 10
+        while temp != -1:
+            # Update score
+            curr_score = (curr_score * 10) + temp
+            # Reset list to empty list
+            white_pixels = []
+
+            # Loop through all pixels in 3x8 image of each number
+            for i in range(0,8):
+                # If white pixel in first row, add y variable to list
+                if(pix[x,i] == WHITE_PIX): 
+                    white_pixels.append(i)
+
+            # Use switch case to determine which number is used
+            match white_pixels:
+                # Number is 0 or 6
+                case [1,2,3,4,5]:
+                    if(pix[x+2, 3] == WHITE_PIX):
+                        temp = 6
+                    else:
+                        temp = 0
+                # Number is 1
+                case [1]:
+                    temp = 1
+                # Number is 2
+                case [1,5,6]:
+                    temp = 2
+                # Number is 3
+                case [1,5]:
+                    temp = 3
+                # Number is 4
+                case [3,4]:
+                    temp = 4
+                # Number is 5
+                case [0,1,2,3,5]:
+                    temp = 5
+                # Number is 7
+                case [0]:
+                    temp = 7
+                # Number is 8
+                case [1,2,4,5]:
+                    temp = 8
+                # Number is 9
+                case [1,2,5]:
+                    temp = 9
+                # End of score reached
+                case _:
+                    temp = -1
+            
+            if(temp == 1):
+                x += 4
             else:
-                curr_score = (curr_score * 10) + score_temp
+                x += 8
 
-            #Check first 4 pixels if image is one
-            white_px = self.find_white_pixels(SCORE_X_POS + self.score_x, SCORE_Y_POS, SCORE_ALT_WIDTH, SCORE_HEIGHT, pix)
-
-            #Post process pixels to determine if "1"
-            if(len(white_px) == 8):
-                score_temp = 1
-                self.score_x += SCORE_ALT_WIDTH + 1
-            else:
-
-                #Otherwise check first 9 pixels if value is "2"-"9"
-                white_px = self.find_white_pixels(SCORE_X_POS + self.score_x, SCORE_Y_POS, SCORE_HEIGHT, SCORE_HEIGHT, pix)
-
-                #Post process pixels to compare what value
-                score_temp = self.get_score_num(white_px)
-
-                self.score_x += SCORE_HEIGHT + 1
-        
         return curr_score
