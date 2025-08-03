@@ -198,7 +198,7 @@ class HeliAttackEnv(gym.Env):
         # End game if dead
         if(self.health <= 0):
             done = True
-            reward -= 500
+            # reward -= 500
             # reward += -300 + (self.steps / 15) #600 seconds goal decreased by time survived
 
         # Reward for living
